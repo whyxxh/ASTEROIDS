@@ -65,6 +65,7 @@ Asteroid createAsteroid(Player *p, int rad, v2 origin) {
 
 void initGame(Player *p, Asteroid *a, Bullet *b) {
     InitWindow(WIN_W, WIN_H, "ASTEROIDS");
+    InitAudioDevice();
     SetTargetFPS(60);
     
     // Initialize player
@@ -145,8 +146,9 @@ void updatePlayer(Player *p, float dt) {
     p->vel = Vector2Scale(p->vel, 0.99f);
 }
 
-void updateAsteroids(Asteroid *a, float dt, Player *p, int asteroidShot) {
+void updateAsteroids(Asteroid *a, float dt, Player *p, int asteroidShot, Sound bangL, Sound bangM, Sound bangS) {
     if (asteroidShot >= 0) {
+        a[asteroidShot].rad > 30 ? PlaySound(bangL) : PlaySound(bangS);
         if (asteroidShot + 2 <= MAX_ASTEROIDS_NUM && a[asteroidShot].rad >= 10) {
             for (int i = 0; i < 2; i++) {
                 a[asteroidNum + i] = createAsteroid(p, a[asteroidShot].rad / 2, a[asteroidShot].pos);
@@ -184,8 +186,9 @@ void updateBullets(Bullet *b, float dt) {
 }
 
 // checks
-void checkBullets(Player *p, Bullet *b) {
+void checkBullets(Player *p, Bullet *b, Sound fire) {
     if (IsKeyPressed(KEY_SPACE) && bulletCount < MAX_BULLETS) {
+        PlaySound(fire);
         for (int i = 0; i < MAX_BULLETS; i++) {
             if (!b[i].active) {
                 b[i] = (Bullet){
@@ -234,13 +237,13 @@ int checkAsteroidShot(Bullet *b, Asteroid *a) {
 }
 
 // Update and Render functions
-void update(Player *p, Asteroid *a, Bullet *b, float dt) {
+void update(Player *p, Asteroid *a, Bullet *b, float dt, Sound fire, Sound bangL, Sound bangM, Sound bangS) {
     int asteroidShot = 0;
     checkPlayerCollision(p, a);
     asteroidShot = checkAsteroidShot(b, a);
     updatePlayer(p, dt);
-    updateAsteroids(a, dt, p, asteroidShot);  
-    checkBullets(p, b);
+    updateAsteroids(a, dt, p, asteroidShot, bangL, bangM, bangS);  
+    checkBullets(p, b, fire);
     updateBullets(b, dt);
 }
 
@@ -263,14 +266,28 @@ int main() {
     Player p;
     Asteroid a[MAX_ASTEROIDS_NUM];
     Bullet b[MAX_BULLETS];
-    
+
     initGame(&p, a, b);
     
+    Sound fire = LoadSound("assets/fire.wav");
+    Sound bangLarge = LoadSound("assets/bangLarge.wav");
+    Sound bangMed = LoadSound("assets/bangMedium.wav");
+    Sound bangSmall = LoadSound("assets/bangSmall.wav");
+    SetSoundVolume(fire, 1.0f);
+    SetSoundVolume(bangLarge, 1.0f);
+
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
-        update(&p, a, b, dt);
+        update(&p, a, b, dt, fire, bangLarge, bangSmall, bangMed);
         render(p, a, b);
     }
+
+    UnloadSound(fire);
+    UnloadSound(bangLarge);
+    UnloadSound(bangSmall);
+    UnloadSound(bangMed);
+
+    CloseAudioDevice();
 
     CloseWindow();
     return 0;

@@ -7,7 +7,6 @@ this is a simple asteroids clone made with c and raylib
 - make asteroids respawn for infinite arcade gameplay
 - make multiple lives
 - implement a score
-- implement sound
 - implement pause ans start menu
 
 **optional:**
