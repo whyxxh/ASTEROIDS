@@ -18,7 +18,15 @@ const float PLAYER_ACCEL = 100.0f;
 
 const int INIT_ASTEROIDS_NUM = 5;
 const int MAX_ASTEROIDS_NUM = 50;
+
 const int MAX_BULLETS = 10;
+
+const int MAX_PARTICLES = 300;
+const float MIN_PARTICLE_LIFETIME = 0.1f;
+const float MAX_PARTICLE_LIFETIME = 0.2f;
+const int MIN_PARTICLE_SIZE = 1;
+const int MAX_PARTICLE_SIZE = 2;
+
 
 // Ship Shape Definition
 const float SHIP[3][2][2] = {
@@ -33,6 +41,7 @@ typedef struct {
     int isStartScreen;
     int bulletCount;
     int asteroidNum;
+    int particleCount;
 } GameState;
 
 GameState gameState;
@@ -56,6 +65,13 @@ typedef struct {
     int isActive;
 } Bullet;
 
+typedef struct {
+    v2 pos;
+    v2 vel;
+    float lifetime;
+    float size;
+} Particle;
+
 // Utility Functions
 float randFloat(float min, float max) {
     return min + (float)rand() / RAND_MAX * (max - min);
@@ -69,13 +85,14 @@ Asteroid createAsteroid(Player *player, float radius, v2 origin) {
     };
 }
 
-void initGame(Player *player, Asteroid *asteroidArr, Bullet *bulletArr) { 
+void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Particle particles[]) { 
     // initialize gamestate
     gameState = (GameState){
         .isPaused = 1,
         .isStartScreen = 0,
         .asteroidNum = INIT_ASTEROIDS_NUM,
-        .bulletCount = 0
+        .bulletCount = 0,
+        .particleCount = 0
     };
 
     // Initialize Player
@@ -100,6 +117,22 @@ void initGame(Player *player, Asteroid *asteroidArr, Bullet *bulletArr) {
     // Initialize Bullets
     for (int i = 0; i < MAX_BULLETS; i++) {
         bulletArr[i].isActive = 0;
+    }
+
+    // Initialize particles
+    memset(particles, 0, sizeof(Particle) * MAX_PARTICLE_SIZE);
+}
+
+// particles functions
+void particleExplosion(v2 pos, float size, Particle particles[]) {
+    int particleNum = (int)(randFloat(20, 30));
+    for (int i = 0; i < particleNum; i++) {
+        particles[i] = (Particle){
+            .pos = pos,
+            .vel = (v2){ randFloat(-100, 100), randFloat(-100, 100)},
+            .size = randFloat(MIN_PARTICLE_SIZE, MAX_PARTICLE_SIZE),
+            .lifetime = randFloat(MIN_PARTICLE_LIFETIME, MAX_PARTICLE_LIFETIME)
+        };
     }
 }
 
@@ -128,7 +161,24 @@ void drawBullets(const Bullet *bulletArr) {
     }
 }
 
+void drawParticles(Particle particles[]) {
+    for (int i = 0; i < gameState.particleCount; i++) {
+        DrawCircleV(particles[i].pos, particles[i].size, WHITE);
+    }
+}
+
 // Update Functions
+void updateParticles(Particle particles[], float dt) {
+    for (int i = 0; i < gameState.particleCount; i++) {
+        Vector2Add(particles[i].pos, Vector2Scale(particles[i].vel, dt));
+        particles[i].lifetime -= dt;
+        if (particles[i].lifetime <= 0) {
+            particles[i].lifetime = 0;
+            particles[i] = particles[--gameState.particleCount];
+        }  
+    }
+}
+
 void updatePlayer(Player *player, float dt) {
     if (IsKeyDown(KEY_A)) player->dir -= ROT_SPEED * dt;
     if (IsKeyDown(KEY_D)) player->dir += ROT_SPEED * dt;
@@ -228,7 +278,7 @@ void checkPlayerCollision(Player *player, Asteroid *asteroidArr) {
     }
 }
 
-int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr) {
+int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *particles) {
     for (int i = 0; i < MAX_BULLETS; i++) {
         for (int j = 0; j < gameState.asteroidNum; j++) {
             float dx = bulletArr[i].pos.x - asteroidArr[j].pos.x;  
@@ -236,6 +286,7 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr) {
             if (bulletArr[i].isActive == 1 && dx * dx + dy * dy <= asteroidArr[j].size * asteroidArr[j].size) {
                 bulletArr[i].isActive = 0;
                 gameState.bulletCount--;
+                particleExplosion(bulletArr[i].pos, 1, particles);
                 return j; 
             }
         }
@@ -244,26 +295,27 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr) {
 }
 
 // Update and Render Functions
-void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, float dt, Sound fire, Sound bangL, Sound bangS) {
+void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *particles, float dt, Sound fire, Sound bangL, Sound bangS) {
     int asteroidShot = 0;
     checkPlayerCollision(player, asteroidArr);
-    asteroidShot = checkAsteroidShot(bulletArr, asteroidArr);
+    asteroidShot = checkAsteroidShot(bulletArr, asteroidArr, particles);
     updatePlayer(player, dt);
     updateAsteroids(asteroidArr, dt, player, asteroidShot, bangL, bangS);  
     checkBullets(player, bulletArr, fire);
     updateBullets(bulletArr, dt);
+    updateParticles(particles, dt);
 }
 
-void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr) {
+void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr, Particle particles[], float dt) {
     BeginDrawing();
     ClearBackground(BLACK);
-
     drawShip(player);
     for (int i = 0; i < gameState.asteroidNum; i++) {
         drawAsteroid(asteroidArr[i]);
     }
     drawBullets(bulletArr);
-
+    if (IsKeyPressed(KEY_E)) particleExplosion(player.pos, 1, particles);
+    drawParticles(particles);
     EndDrawing();
 }
 
@@ -274,11 +326,12 @@ int main() {
     Player player;
     Asteroid asteroidArr[MAX_ASTEROIDS_NUM];
     Bullet bulletArr[MAX_BULLETS];
+    Particle particles[MAX_PARTICLES];
 
     InitWindow(WIN_W, WIN_H, "ASTEROIDS");
     InitAudioDevice();
 
-    initGame(&player, asteroidArr, bulletArr);
+    initGame(&player, asteroidArr, bulletArr, particles);
     
     Sound fire = LoadSound("assets/fire.wav");
     Sound bangLarge = LoadSound("assets/bangLarge.wav");
@@ -289,12 +342,12 @@ int main() {
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
-        update(&player, asteroidArr, bulletArr, dt, fire, bangLarge, bangSmall);
+        update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
         if (!player.isAlive) {
-               initGame(&player, asteroidArr, bulletArr);
+               initGame(&player, asteroidArr, bulletArr, particles);
         }
 
-        render(player, asteroidArr, bulletArr);
+        render(player, asteroidArr, bulletArr, particles, dt);
     }
 
     UnloadSound(fire);
