@@ -11,7 +11,3 @@ this is a simple ASTEROIDS (1979) clone made with the C language and raylib
 - make multiple lives
 - implement a score
 - implement pause ans start menu
-
-**optional:**
-- make asteroid more asteroid shaped (not round)
-- clean the code
