@@ -3,6 +3,7 @@
 #include <math.h>
 #include <raymath.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 // Type aliases and constants
 typedef Vector2 v2;
@@ -11,19 +12,21 @@ static const int WIN_W = 800;
 static const int WIN_H = 600;
 static const int SCALE = 7;
 
-static const float ROT_SPEED = 4;
-static const float PLAYER_ACCEL = 100;
+static const float ROT_SPEED = 4.0f;
+static const float PLAYER_ACCEL = 100.0f;
 
 static const int INIT_ASTEROIDS_NUM = 5;
-
+static const int MAX_ASTEROIDS_NUM = 50;
 static const int MAX_BULLETS = 10;
 int bulletCount = 0;
+int asteroidNum = INIT_ASTEROIDS_NUM;
+
 
 // Ship model coordinates
 static const float SHIP[3][2][2] = {
     {{0, -2.5}, {-1.2, 2.5}},
     {{0, -2.5}, {1.2, 2.5}},
-    {{-1.2, 2.5}, {1.2, 2.5}},
+    {{-1.2, 2.5}, {1.2, 2.5}}
 };
 
 // Struct definitions
@@ -31,33 +34,33 @@ typedef struct {
     v2 pos;
     v2 vel;
     float dir;
-    float size;
+    float rad;
 } Asteroid;
 
 typedef struct {
     v2 pos;
     v2 vel;
-    float dir; 
+    float dir;
+    int isAlive;
 } Player;
 
 typedef struct {
     v2 pos;
     v2 vel;
-    int state;
+    int active;
 } Bullet;
 
 // Utility functions
 float randFloat(int min, int max) {
-    float range = (float)(max - min);
-    return min + (float)rand() / (float)(RAND_MAX) * range;
+    return min + (float)rand() / RAND_MAX * (max - min);
 }
 
-Asteroid createAsteroid() {
-    Asteroid a;
-    a.pos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
-    a.vel = (v2){randFloat(-50, 50), randFloat(-50, 50)};
-    a.size = randFloat(40, 60);
-    return a;
+Asteroid createAsteroid(Player *p, int rad, v2 origin) {
+    return (Asteroid){
+        .pos = origin,
+        .vel = (v2){randFloat(-50, 50), randFloat(-50, 50)},
+        .rad = randFloat(rad - 5, rad + 5)
+    };
 }
 
 void initGame(Player *p, Asteroid *a, Bullet *b) {
@@ -65,102 +68,99 @@ void initGame(Player *p, Asteroid *a, Bullet *b) {
     SetTargetFPS(60);
     
     // Initialize player
-    p->pos = (v2){ WIN_W / 2.0f, WIN_H / 2.0f };
-    p->vel = (v2){ 0, 0 };
-    p->dir = 0.0f; 
+    *p = (Player){
+        .pos = (v2){WIN_W / 2.0f, WIN_H / 2.0f},
+        .vel = (v2){0, 0},
+        .dir = 0.0f,
+        .isAlive = 1
+    };
 
     // Initialize asteroids
+    v2 spawnPos;
+    do {
+        spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
+    } while (fabs(p->pos.x - spawnPos.x) <= 100 && fabs(p->pos.y - spawnPos.y) <= 100);
+
     for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
-        a[i] = createAsteroid();
+        a[i] = createAsteroid(p, 40, spawnPos);
     }
 
-    // initialize bullet array
+    // Initialize bullets
     for (int i = 0; i < MAX_BULLETS; i++) {
-        b[i].pos = p->pos;
-        b[i].state = 0;
-    } 
+        b[i].active = 0;
+    }
+
 
 }
 
 // Drawing functions
-void drawShip(Player p) {
-    int x = 0, y = 1, a = 0, b = 1;
-    
+void drawShip(const Player p) {
     for (int i = 0; i < 3; i++) {
-        // Scale and position the relative coordinates
-        float xA = SHIP[i][a][x] * SCALE;
-        float yA = SHIP[i][a][y] * SCALE;
-        float xB = SHIP[i][b][x] * SCALE;
-        float yB = SHIP[i][b][y] * SCALE;
+        v2 aPos = Vector2Scale((v2){SHIP[i][0][0], SHIP[i][0][1]}, SCALE);
+        v2 bPos = Vector2Scale((v2){SHIP[i][1][0], SHIP[i][1][1]}, SCALE);
 
-        v2 aPos = {xA, yA};
-        v2 bPos = {xB, yB};
+        aPos = Vector2Add(Vector2Rotate(aPos, p.dir), p.pos);
+        bPos = Vector2Add(Vector2Rotate(bPos, p.dir), p.pos);
 
-        // Rotate around the origin, then translate to player position
-        v2 rotAPos = Vector2Rotate(aPos, p.dir);
-        v2 rotBPos = Vector2Rotate(bPos, p.dir);
-
-        rotAPos = Vector2Add(rotAPos, p.pos);
-        rotBPos = Vector2Add(rotBPos, p.pos);    
-
-        DrawLineV(rotAPos, rotBPos, WHITE);
+        DrawLineV(aPos, bPos, WHITE);
     }
 }
 
-void drawAsteroid(Asteroid a) {
-    DrawCircleLines(a.pos.x, a.pos.y, a.size, WHITE);
+void drawAsteroid(const Asteroid a) {
+    DrawCircleLines(a.pos.x, a.pos.y, a.rad, WHITE);
 }
 
-void drawBullets(Bullet *b) {
-    for (int i = 0; i <= MAX_BULLETS; i++) {
-        if (b[i].state) 
+void drawBullets(const Bullet *b) {
+    for (int i = 0; i < MAX_BULLETS; i++) {
+        if (b[i].active) {
             DrawCircleV(b[i].pos, 2, WHITE);
+        }
     }
 }
 
-// Movement functions
-void movePlayer(Player *p, float dt) {
-    // Rotation controls
-    if (IsKeyDown(KEY_A)) { 
-        p->dir -= ROT_SPEED * dt;
-    }
-    if (IsKeyDown(KEY_D)) { 
-        p->dir += ROT_SPEED * dt; 
-    }
-
+// update functions
+void updatePlayer(Player *p, float dt) {
+    if (IsKeyDown(KEY_A)) p->dir -= ROT_SPEED * dt;
+    if (IsKeyDown(KEY_D)) p->dir += ROT_SPEED * dt;
     float moveDir = p->dir - PI / 2;
 
-    // Acceleration controls
+    // Apply acceleration
     if (IsKeyDown(KEY_W)) {
-        p->vel.x += cos(moveDir) * PLAYER_ACCEL * dt; 
-        p->vel.y += sin(moveDir) * PLAYER_ACCEL * dt; 
+        p->vel.x += cos(moveDir) * PLAYER_ACCEL * dt;
+        p->vel.y += sin(moveDir) * PLAYER_ACCEL * dt;
     }
     if (IsKeyDown(KEY_S)) {
-        p->vel.x -= cos(moveDir) * PLAYER_ACCEL * dt; 
-        p->vel.y -= sin(moveDir) * PLAYER_ACCEL * dt; 
+        p->vel.x -= cos(moveDir) * PLAYER_ACCEL * dt;
+        p->vel.y -= sin(moveDir) * PLAYER_ACCEL * dt;
     }
 
-    // Update position based on velocity
-    p->pos.x += p->vel.x * dt;
-    p->pos.y += p->vel.y * dt;
-
-    // Screen wrapping for player
+    // Update position and wrap around screen edges
+    p->pos = Vector2Add(p->pos, Vector2Scale(p->vel, dt));
     if (p->pos.x > WIN_W) p->pos.x = 0;
     if (p->pos.x < 0) p->pos.x = WIN_W;
     if (p->pos.y > WIN_H) p->pos.y = 0;
     if (p->pos.y < 0) p->pos.y = WIN_H;
 
-    // Friction effect
-    p->vel.x *= 0.99f;
-    p->vel.y *= 0.99f;
+    // Apply friction
+    p->vel = Vector2Scale(p->vel, 0.99f);
 }
 
-void moveAsteroids(Asteroid *a, float dt) {
-    for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
-        a[i].pos.x += a[i].vel.x * dt;
-        a[i].pos.y += a[i].vel.y * dt;
+void updateAsteroids(Asteroid *a, float dt, Player *p, int asteroidShot) {
+    if (asteroidShot >= 0) {
+        if (asteroidShot + 2 <= MAX_ASTEROIDS_NUM && a[asteroidShot].rad >= 10) {
+            for (int i = 0; i < 2; i++) {
+                a[asteroidNum + i] = createAsteroid(p, a[asteroidShot].rad / 2, a[asteroidShot].pos);
+            }
+            asteroidNum += 2;
+        }
+        for (int i = asteroidShot; i < asteroidNum - 1; i++) {
+            a[i] = a[i + 1];
+        }
+        asteroidNum--; 
+    }
 
-        // Screen wrapping for asteroids
+    for (int i = 0; i < asteroidNum; i++) {
+        a[i].pos = Vector2Add(a[i].pos, Vector2Scale(a[i].vel, dt));
         if (a[i].pos.x > WIN_W) a[i].pos.x = 0;
         if (a[i].pos.x < 0) a[i].pos.x = WIN_W;
         if (a[i].pos.y > WIN_H) a[i].pos.y = 0;
@@ -168,57 +168,92 @@ void moveAsteroids(Asteroid *a, float dt) {
     }
 }
 
-void checkBullets(Player *p, Bullet *b) {
-    if (IsKeyPressed(KEY_SPACE)) {
-        if (bulletCount <= MAX_BULLETS) {
-            for (int i = 0; i < MAX_BULLETS; i++) {
-                if (!b[i].state) {
-                    b[i].pos = p->pos;
-                    b[i].vel.x = cos(p->dir) * 50;
-                    b[i].vel.y = sin(p->dir) * 50;
-                    b[i].state = 1;
-                    bulletCount++;
-                }
-            }
-        }
-    }
-}
+
 
 void updateBullets(Bullet *b, float dt) {
     for (int i = 0; i < MAX_BULLETS; i++) {
-        if (b[i].state) {
-            // Move active bullets
-            b[i].pos.x += b[i].vel.x * dt;
-            b[i].pos.y += b[i].vel.y * dt;
+        if (b[i].active) {
+            b[i].pos = Vector2Add(b[i].pos, Vector2Scale(b[i].vel, dt));
 
-            // Deactivate bullets if they go off-screen
             if (b[i].pos.x < 0 || b[i].pos.x > WIN_W || b[i].pos.y < 0 || b[i].pos.y > WIN_H) {
-                b[i].state = 0;
+                b[i].active = 0;
                 bulletCount--;
             }
         }
     }
 }
 
+// checks
+void checkBullets(Player *p, Bullet *b) {
+    if (IsKeyPressed(KEY_SPACE) && bulletCount < MAX_BULLETS) {
+        for (int i = 0; i < MAX_BULLETS; i++) {
+            if (!b[i].active) {
+                b[i] = (Bullet){
+                    .pos = p->pos,
+                    .vel = (v2){
+                        cos(p->dir - PI / 2) * 500,
+                        sin(p->dir - PI / 2) * 500
+                    },
+                    .active = 1
+                };
+                bulletCount++;
+                break;
+            }
+        }
+    }
+}
+
+void checkPlayerCollision(Player *p, Asteroid *a) {
+    for (int i = 0; i < asteroidNum; i++) {
+        float dx = fabs(p->pos.x - a[i].pos.x);
+        float dy = fabs(p->pos.y - a[i].pos.y);
+
+        float dist = dx * dx + dy * dy;
+        
+        float sumRadii = a[i].rad + 5;
+
+        if (dist <= sumRadii * sumRadii) {
+            p->isAlive = 0;
+        }
+    }
+}
+
+int checkAsteroidShot(Bullet *b, Asteroid *a) {
+    for (int i = 0; i < MAX_BULLETS; i++) {
+        for (int j = 0; j < asteroidNum; j++) {
+            float dx = b[i].pos.x - a[j].pos.x;  
+            float dy = b[i].pos.y - a[j].pos.y;  
+            if (b[i].active == 1 && dx * dx + dy * dy <= a[j].rad * a[j].rad) {
+                b[i].active = 0;
+                bulletCount--;
+                return j; 
+            }
+        }
+    }
+    return -1;
+}
 
 // Update and Render functions
 void update(Player *p, Asteroid *a, Bullet *b, float dt) {
-    movePlayer(p, dt);
-    moveAsteroids(a, dt);  
+    int asteroidShot = 0;
+    checkPlayerCollision(p, a);
+    asteroidShot = checkAsteroidShot(b, a);
+    updatePlayer(p, dt);
+    updateAsteroids(a, dt, p, asteroidShot);  
     checkBullets(p, b);
     updateBullets(b, dt);
 }
-
 
 void render(Player p, Asteroid *a, Bullet *b) {
     BeginDrawing();
     ClearBackground(BLACK);
 
-    drawShip(p);
-    for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
+    if (p.isAlive) { drawShip(p); }
+    for (int i = 0; i < asteroidNum; i++) {
         drawAsteroid(a[i]);
     }
     drawBullets(b);
+
     EndDrawing();
 }
 
@@ -226,8 +261,9 @@ void render(Player p, Asteroid *a, Bullet *b) {
 int main() {
     srand(time(NULL));
     Player p;
-    Asteroid a[INIT_ASTEROIDS_NUM];
+    Asteroid a[MAX_ASTEROIDS_NUM];
     Bullet b[MAX_BULLETS];
+    
     initGame(&p, a, b);
     
     while (!WindowShouldClose()) {
