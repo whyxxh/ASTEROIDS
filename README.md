@@ -6,7 +6,6 @@ this is a simple ASTEROIDS (1979) clone made with the C language and raylib
 
 # TO-DO:
 - make particles for when you shoot or die
-- make it so the asteroids spawn off screen and not in a clump 
 - make asteroids respawn for infinite arcade gameplay
 - make multiple lives
 - implement a score
