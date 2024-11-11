@@ -8,4 +8,3 @@ this is a simple ASTEROIDS (1979) clone made with the C language and raylib
 - make asteroids respawn for infinite arcade gameplay
 - make multiple lives
 - implement a score
-- implement pause ans start menu

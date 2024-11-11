@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <raylib.h>
 #include <string.h>
 #include <time.h>
@@ -30,9 +31,9 @@ const int MAX_PARTICLE_SIZE = 2;
 
 // Ship Shape Definition
 const float SHIP[3][2][2] = {
-    {{0, -3.0f}, {-1.5f, 1.5f}},   // Left part of the ship
-    {{0, -3.0f}, {1.5f, 1.5f}},    // Right part of the ship
-    {{-1.5f, 1.5f}, {1.5f, 1.5f}}   // Bottom part (spokes)
+    {{0, -3.0f}, {-1.5f, 1.5f}},  
+    {{0, -3.0f}, {1.5f, 1.5f}},    
+    {{-1.5f, 1.5f}, {1.5f, 1.5f}}
 };
 
 // Struct Definitions 
@@ -88,8 +89,8 @@ Asteroid createAsteroid(Player *player, float radius, v2 origin) {
 void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Particle particles[]) { 
     // initialize gamestate
     gameState = (GameState){
-        .isPaused = 1,
-        .isStartScreen = 0,
+        .isPaused = 0,
+        .isStartScreen = 1,
         .asteroidNum = INIT_ASTEROIDS_NUM,
         .bulletCount = 0,
         .particleCount = 0
@@ -298,6 +299,7 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *partic
 
 // Update and Render Functions
 void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *particles, float dt, Sound fire, Sound bangL, Sound bangS) {
+    if (IsKeyPressed(KEY_P)) gameState.isPaused = 1;
     int asteroidShot = 0;
     checkPlayerCollision(player, asteroidArr, particles);
     asteroidShot = checkAsteroidShot(bulletArr, asteroidArr, particles);
@@ -346,13 +348,27 @@ int main() {
 
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
-        float dt = GetFrameTime();
-        update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
-        if (!player.isAlive) {
-            initGame(&player, asteroidArr, bulletArr, particles);
+        while (!gameState.isPaused && !gameState.isStartScreen) {
+            float dt = GetFrameTime();
+            update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
+            if (!player.isAlive) {
+                initGame(&player, asteroidArr, bulletArr, particles);
+            }
+            render(player, asteroidArr, bulletArr, particles, dt, font);
         }
-
-        render(player, asteroidArr, bulletArr, particles, dt, font);
+        if (gameState.isPaused) {
+            BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
+            EndDrawing();
+            if (IsKeyPressed(KEY_SPACE)) gameState.isPaused = 0;
+        } else {
+            BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
+            EndDrawing();
+            if (IsKeyPressed(KEY_SPACE)) gameState.isStartScreen = 0;
+        }
     }
 
     UnloadSound(fire);
