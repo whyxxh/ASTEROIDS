@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <string.h>
 #include <time.h>
 #include <math.h>
 #include <raymath.h>
@@ -21,20 +22,19 @@ static const int MAX_BULLETS = 10;
 int bulletCount = 0;
 int asteroidNum = INIT_ASTEROIDS_NUM;
 
-
-// Ship model coordinates
 static const float SHIP[3][2][2] = {
-    {{0, -2.5}, {-1.2, 2.5}},
-    {{0, -2.5}, {1.2, 2.5}},
-    {{-1.2, 2.5}, {1.2, 2.5}}
+    {{0, -3.0}, {-1.5, 1.5}},   // Left part of the ship
+    {{0, -3.0}, {1.5, 1.5}},    // Right part of the ship
+    {{-1.5, 1.5}, {1.5, 1.5}}   // Bottom part (spokes)
 };
+
 
 // Struct definitions
 typedef struct {
     v2 pos;
     v2 vel;
     float dir;
-    float rad;
+    float size;
 } Asteroid;
 
 typedef struct {
@@ -59,15 +59,11 @@ Asteroid createAsteroid(Player *p, int rad, v2 origin) {
     return (Asteroid){
         .pos = origin,
         .vel = (v2){randFloat(-50, 50), randFloat(-50, 50)},
-        .rad = randFloat(rad - 5, rad + 5)
+        .size = randFloat(rad - 2, rad + 2)
     };
 }
 
-void initGame(Player *p, Asteroid *a, Bullet *b) {
-    InitWindow(WIN_W, WIN_H, "ASTEROIDS");
-    InitAudioDevice();
-    SetTargetFPS(60);
-    
+void initGame(Player *p, Asteroid *a, Bullet *b) { 
     // Initialize player
     *p = (Player){
         .pos = (v2){WIN_W / 2.0f, WIN_H / 2.0f},
@@ -76,7 +72,8 @@ void initGame(Player *p, Asteroid *a, Bullet *b) {
         .isAlive = 1
     };
 
-    // Initialize asteroids
+    // Initialize asteroidso
+    memset(a, 0, sizeof(Asteroid) * MAX_ASTEROIDS_NUM);
     v2 spawnPos;
     do {
         spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
@@ -108,7 +105,7 @@ void drawShip(const Player p) {
 }
 
 void drawAsteroid(const Asteroid a) {
-    DrawCircleLines(a.pos.x, a.pos.y, a.rad, WHITE);
+    DrawCircleLines(a.pos.x, a.pos.y, a.size, WHITE);
 }
 
 void drawBullets(const Bullet *b) {
@@ -148,10 +145,10 @@ void updatePlayer(Player *p, float dt) {
 
 void updateAsteroids(Asteroid *a, float dt, Player *p, int asteroidShot, Sound bangL, Sound bangM, Sound bangS) {
     if (asteroidShot >= 0) {
-        a[asteroidShot].rad > 30 ? PlaySound(bangL) : PlaySound(bangS);
-        if (asteroidShot + 2 <= MAX_ASTEROIDS_NUM && a[asteroidShot].rad >= 10) {
+        a[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
+        if (asteroidShot + 2 <= MAX_ASTEROIDS_NUM && a[asteroidShot].size >= 10) {
             for (int i = 0; i < 2; i++) {
-                a[asteroidNum + i] = createAsteroid(p, a[asteroidShot].rad / 2, a[asteroidShot].pos);
+                a[asteroidNum + i] = createAsteroid(p, a[asteroidShot].size / 2, a[asteroidShot].pos);
             }
             asteroidNum += 2;
         }
@@ -213,7 +210,7 @@ void checkPlayerCollision(Player *p, Asteroid *a) {
 
         float dist = dx * dx + dy * dy;
         
-        float sumRadii = a[i].rad + 5;
+        float sumRadii = a[i].size + 5;
 
         if (dist <= sumRadii * sumRadii) {
             p->isAlive = 0;
@@ -226,7 +223,7 @@ int checkAsteroidShot(Bullet *b, Asteroid *a) {
         for (int j = 0; j < asteroidNum; j++) {
             float dx = b[i].pos.x - a[j].pos.x;  
             float dy = b[i].pos.y - a[j].pos.y;  
-            if (b[i].active == 1 && dx * dx + dy * dy <= a[j].rad * a[j].rad) {
+            if (b[i].active == 1 && dx * dx + dy * dy <= a[j].size * a[j].size) {
                 b[i].active = 0;
                 bulletCount--;
                 return j; 
@@ -251,7 +248,7 @@ void render(Player p, Asteroid *a, Bullet *b) {
     BeginDrawing();
     ClearBackground(BLACK);
 
-    if (p.isAlive) { drawShip(p); }
+    drawShip(p);
     for (int i = 0; i < asteroidNum; i++) {
         drawAsteroid(a[i]);
     }
@@ -267,6 +264,9 @@ int main() {
     Asteroid a[MAX_ASTEROIDS_NUM];
     Bullet b[MAX_BULLETS];
 
+    InitWindow(WIN_W, WIN_H, "ASTEROIDS");
+    InitAudioDevice();
+
     initGame(&p, a, b);
     
     Sound fire = LoadSound("assets/fire.wav");
@@ -276,9 +276,14 @@ int main() {
     SetSoundVolume(fire, 1.0f);
     SetSoundVolume(bangLarge, 1.0f);
 
+    SetTargetFPS(60);
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         update(&p, a, b, dt, fire, bangLarge, bangSmall, bangMed);
+        if (!p.isAlive) {
+               initGame(&p, a, b);
+        }
+
         render(p, a, b);
     }
 
