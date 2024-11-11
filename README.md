@@ -6,9 +6,9 @@ this is a simple ASTEROIDS (1979) clone made with the C language and raylib
 **to play:**
 
 clone the repo
-cd into the cloned directory
-type make and make run
-enjoy (or not)
+- cd into the cloned directory
+- type make and make run
+- enjoy (or not)
 
 
 # TO-DO:
