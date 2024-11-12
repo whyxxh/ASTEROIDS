@@ -208,6 +208,18 @@ void updatePlayer(Player *player, float dt) {
 }
 
 void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int asteroidShot, Sound bangL, Sound bangS) {
+    if (gameState.asteroidNum == 0) {
+        v2 spawnPos;
+        for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
+            do {
+                spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
+            } while (fabs(player->pos.x - spawnPos.x) <= 150 && fabs(player->pos.y - spawnPos.y) <= 150);
+
+        asteroidArr[i] = createAsteroid(player, 60, spawnPos);     
+    }
+
+    }
+
     if (asteroidShot >= 0) {
         asteroidArr[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
         if (asteroidArr[asteroidShot].size >= 10) {
@@ -313,7 +325,6 @@ void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *
 void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr, Particle particles[], float dt, Font font) {
     BeginDrawing();
     ClearBackground(BLACK);
-    DrawTextEx(font, "esc to quit", (Vector2){10, 10}, 30, 1, WHITE);
     drawShip(player);
     for (int i = 0; i < gameState.asteroidNum; i++) {
         drawAsteroid(asteroidArr[i]);
@@ -338,7 +349,7 @@ int main() {
 
     initGame(&player, asteroidArr, bulletArr, particles);
     
-    Font font = LoadFontEx("assets/AcPlus_IBM_EGA_8x14.ttf", 32, 0, 250); 
+    Font font = LoadFontEx("assets/AcPlus_IBM_EGA_8x14.ttf", 32, 0, 255); 
 
     Sound fire = LoadSound("assets/fire.wav");
     Sound bangLarge = LoadSound("assets/bangLarge.wav");
@@ -348,27 +359,26 @@ int main() {
 
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
-        while (!gameState.isPaused && !gameState.isStartScreen) {
-            float dt = GetFrameTime();
-            update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
-            if (!player.isAlive) {
-                initGame(&player, asteroidArr, bulletArr, particles);
-            }
-            render(player, asteroidArr, bulletArr, particles, dt, font);
+        // if (gameState.isPaused) {
+        //     BeginDrawing();
+        //     ClearBackground(BLACK);
+        //     DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
+        //     EndDrawing();
+        //     if (IsKeyPressed(KEY_SPACE)) gameState.isPaused = 0;
+        //     continue;
+        // } else {
+        //     BeginDrawing();
+        //     ClearBackground(BLACK);
+        //     DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
+        //     EndDrawing();
+        //     if (IsKeyPressed(KEY_SPACE)) { gameState.isStartScreen = 0; continue; }
+        // }
+        float dt = GetFrameTime();
+        update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
+        if (!player.isAlive) {
+            initGame(&player, asteroidArr, bulletArr, particles);
         }
-        if (gameState.isPaused) {
-            BeginDrawing();
-            ClearBackground(BLACK);
-            DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
-            EndDrawing();
-            if (IsKeyPressed(KEY_SPACE)) gameState.isPaused = 0;
-        } else {
-            BeginDrawing();
-            ClearBackground(BLACK);
-            DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
-            EndDrawing();
-            if (IsKeyPressed(KEY_SPACE)) gameState.isStartScreen = 0;
-        }
+        render(player, asteroidArr, bulletArr, particles, dt, font);
     }
 
     UnloadSound(fire);
