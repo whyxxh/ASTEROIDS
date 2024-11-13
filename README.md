@@ -10,3 +10,4 @@ Just run `./run.sh`, or run `make; make run`
 - make asteroids respawn for infinite arcade gameplay
 - make multiple lives
 - implement a score
+- fix delta time 

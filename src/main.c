@@ -326,6 +326,7 @@ void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *
 }
 
 void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr, Particle particles[], float dt, Font font) {
+    DrawFPS(2, 2);
     BeginDrawing();
     ClearBackground(BLACK);
     drawShip(player);
