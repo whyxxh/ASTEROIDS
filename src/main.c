@@ -20,7 +20,7 @@ const float PLAYER_ACCEL = 100.0f;
 const int INIT_ASTEROIDS_NUM = 5;
 const int MAX_ASTEROIDS_NUM = 50;
 
-const int MAX_BULLETS = 10;
+const int MAX_BULLETS = 100;
 
 const int MAX_PARTICLES = 300;
 const float MIN_PARTICLE_LIFETIME = 0.7f;
@@ -40,6 +40,7 @@ const float SHIP[3][2][2] = {
 typedef struct {
     int isPaused;
     int isStartScreen;
+    int isDebugging;
     int bulletCount;
     int asteroidNum;
     int particleCount;
@@ -127,15 +128,17 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
 // particles functions
 void particleExplosion(v2 pos, float size, Particle particles[]) {
     int particleNum = (int)(randFloat(20, 30));
-    for (int i = 0; i < particleNum; i++) {
-        particles[i] = (Particle){
-            .pos = pos,
-            .vel = (v2){ randFloat(-100, 100), randFloat(-100, 100)},
-            .size = randFloat(MIN_PARTICLE_SIZE, MAX_PARTICLE_SIZE),
-            .lifetime = randFloat(MIN_PARTICLE_LIFETIME, MAX_PARTICLE_LIFETIME)
-        };
+    if (!(particleNum + gameState.particleCount > MAX_PARTICLES)) {
+        for (int i = 0; i < particleNum; i++) {
+            particles[i + gameState.particleCount] = (Particle){
+                .pos = pos,
+                .vel = (v2){ randFloat(-100, 100), randFloat(-100, 100)},
+                .size = randFloat(MIN_PARTICLE_SIZE, MAX_PARTICLE_SIZE),
+                .lifetime = randFloat(MIN_PARTICLE_LIFETIME, MAX_PARTICLE_LIFETIME)
+            };
+        }
+        gameState.particleCount += particleNum;
     }
-    gameState.particleCount = particleNum;
 }
 
 // Drawing Functions
