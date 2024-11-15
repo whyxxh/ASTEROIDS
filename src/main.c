@@ -87,6 +87,38 @@ Asteroid createAsteroid(Player *player, float radius, v2 origin) {
     };
 }
 
+void initAsteroids(Asteroid asteroidArr[], Player *player) {
+    memset(asteroidArr, 0, sizeof(Asteroid) * MAX_ASTEROIDS_NUM);
+    v2 spawnPos;
+    for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
+        do {
+            spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
+        } while (fabs(player->pos.x - spawnPos.x) <= 150 && fabs(player->pos.y - spawnPos.y) <= 150);
+
+        asteroidArr[i] = createAsteroid(player, 60, spawnPos);     
+    }
+}
+
+void initPlayer(Player *player) {
+    *player = (Player){
+        .pos = (v2){WIN_W / 2.0f, WIN_H / 2.0f},
+        .vel = (v2){0, 0},
+        .dir = 0.0f,
+        .isAlive = 1
+    };
+}
+
+void initOther(Bullet bulletArr[], Particle particles[]) {
+    // Initialize Bullets
+    for (int i = 0; i < MAX_BULLETS; i++) {
+        bulletArr[i].isActive = 0;
+    }
+
+    // Initialize particles
+    memset(particles, 0, sizeof(Particle) * MAX_PARTICLE_SIZE);
+
+} 
+
 void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Particle particles[]) { 
     // initialize gamestate
     gameState = (GameState){
@@ -97,32 +129,9 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
         .particleCount = 0
     };
 
-    // Initialize Player
-    *player = (Player){
-        .pos = (v2){WIN_W / 2.0f, WIN_H / 2.0f},
-        .vel = (v2){0, 0},
-        .dir = 0.0f,
-        .isAlive = 1
-    };
-
-    // Initialize Asteroids
-    memset(asteroidArr, 0, sizeof(Asteroid) * MAX_ASTEROIDS_NUM);
-    v2 spawnPos;
-    for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
-        do {
-            spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
-        } while (fabs(player->pos.x - spawnPos.x) <= 150 && fabs(player->pos.y - spawnPos.y) <= 150);
-
-        asteroidArr[i] = createAsteroid(player, 60, spawnPos);     
-    }
-    
-    // Initialize Bullets
-    for (int i = 0; i < MAX_BULLETS; i++) {
-        bulletArr[i].isActive = 0;
-    }
-
-    // Initialize particles
-    memset(particles, 0, sizeof(Particle) * MAX_PARTICLE_SIZE);
+    initPlayer(player);
+    initAsteroids(asteroidArr, player);
+    initOther(bulletArr, particles);
 }
 
 // particles functions
@@ -212,17 +221,8 @@ void updatePlayer(Player *player, float dt) {
 
 void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int asteroidShot, Sound bangL, Sound bangS) {
     if (gameState.asteroidNum == 0) {
-        v2 spawnPos;
-        for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
-            do {
-                spawnPos = (v2){randFloat(0, WIN_W), randFloat(0, WIN_H)};
-            } while (fabs(player->pos.x - spawnPos.x) <= 150 && fabs(player->pos.y - spawnPos.y) <= 150);
-
-        asteroidArr[i] = createAsteroid(player, 60, spawnPos);     
+        initAsteroids(asteroidArr, player);
     }
-
-    }
-
     if (asteroidShot >= 0) {
         asteroidArr[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
         if (asteroidArr[asteroidShot].size >= 10) {
@@ -326,7 +326,6 @@ void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *
 }
 
 void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr, Particle particles[], float dt, Font font) {
-    DrawFPS(2, 2);
     BeginDrawing();
     ClearBackground(BLACK);
     drawShip(player);
@@ -363,26 +362,27 @@ int main() {
 
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
-        // if (gameState.isPaused) {
-        //     BeginDrawing();
-        //     ClearBackground(BLACK);
-        //     DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
-        //     EndDrawing();
-        //     if (IsKeyPressed(KEY_SPACE)) gameState.isPaused = 0;
-        //     continue;
-        // } else {
-        //     BeginDrawing();
-        //     ClearBackground(BLACK);
-        //     DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
-        //     EndDrawing();
-        //     if (IsKeyPressed(KEY_SPACE)) { gameState.isStartScreen = 0; continue; }
-        // }
-        float dt = GetFrameTime();
-        update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
-        if (!player.isAlive) {
-            initGame(&player, asteroidArr, bulletArr, particles);
+        if (gameState.isPaused) {
+            BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
+            EndDrawing();
+            if (IsKeyPressed(KEY_SPACE)) { gameState.isPaused = 0; }
+        } 
+        if (gameState.isStartScreen) {
+            BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
+            EndDrawing();
+            if (IsKeyPressed(KEY_SPACE)) { gameState.isStartScreen = 0; }
+        } else {
+            float dt = GetFrameTime();
+            update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
+            if (!player.isAlive) {
+                initGame(&player, asteroidArr, bulletArr, particles);
+            }
+            render(player, asteroidArr, bulletArr, particles, dt, font);
         }
-        render(player, asteroidArr, bulletArr, particles, dt, font);
     }
 
     UnloadSound(fire);

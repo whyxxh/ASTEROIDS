@@ -8,6 +8,7 @@ Just run `./run.sh`, or run `make; make run`
 
 # TO-DO:
 - make asteroids respawn for infinite arcade gameplay
-- make multiple lives
+- add screen shake 
+- implement debug mode
 - implement a score
 - fix delta time 
