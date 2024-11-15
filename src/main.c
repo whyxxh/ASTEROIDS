@@ -28,6 +28,8 @@ const float MAX_PARTICLE_LIFETIME = 1.5f;
 const int MIN_PARTICLE_SIZE = 1;
 const int MAX_PARTICLE_SIZE = 2;
 
+const int SHAKE_STRENGTH = 2;
+
 
 // Ship Shape Definition
 const float SHIP[3][2][2] = {
@@ -132,6 +134,11 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
     initPlayer(player);
     initAsteroids(asteroidArr, player);
     initOther(bulletArr, particles);
+}
+
+// screen shake
+void shakeScreen(float dt) {
+    
 }
 
 // particles functions
