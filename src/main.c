@@ -137,8 +137,9 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
 }
 
 // screen shake
-void shakeScreen(float dt) {
-    
+void shakeScreen(float dt, Asteroid asteroidArr[], Bullet bulletArr[], Particle particles[], Player player) {
+    // Prendre tous les players, bullet, asteriods, et particle et faire l'offset la
+    // Diminuer l'intensité rapidement mais graduellement
 }
 
 // particles functions
@@ -303,7 +304,7 @@ void checkPlayerCollision(Player *player, Asteroid *asteroidArr, Particle partic
     }
 }
 
-int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *particles) {
+int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *particles, float dt) {
     for (int i = 0; i < MAX_BULLETS; i++) {
         for (int j = 0; j < gameState.asteroidNum; j++) {
             float dx = bulletArr[i].pos.x - asteroidArr[j].pos.x;  
@@ -312,6 +313,7 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *partic
                 bulletArr[i].isActive = 0;
                 gameState.bulletCount--;
                 particleExplosion(bulletArr[i].pos, 1, particles);
+                shakeScreen(dt);
                 return j; 
             }
         }
@@ -324,7 +326,7 @@ void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *
     if (IsKeyPressed(KEY_P)) gameState.isPaused = 1;
     int asteroidShot = 0;
     checkPlayerCollision(player, asteroidArr, particles);
-    asteroidShot = checkAsteroidShot(bulletArr, asteroidArr, particles);
+    asteroidShot = checkAsteroidShot(bulletArr, asteroidArr, particles, dt);
     updatePlayer(player, dt);
     updateAsteroids(asteroidArr, dt, player, asteroidShot, bangL, bangS);  
     checkBullets(player, bulletArr, fire);
