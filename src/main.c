@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <raylib.h>
 #include <string.h>
 #include <time.h>
@@ -27,9 +26,6 @@ const float MIN_PARTICLE_LIFETIME = 0.7f;
 const float MAX_PARTICLE_LIFETIME = 1.5f;
 const int MIN_PARTICLE_SIZE = 1;
 const int MAX_PARTICLE_SIZE = 2;
-
-const int SHAKE_STRENGTH = 2;
-
 
 // Ship Shape Definition
 const float SHIP[3][2][2] = {
@@ -90,7 +86,7 @@ Asteroid createAsteroid(Player *player, float radius, v2 origin) {
 }
 
 void initAsteroids(Asteroid asteroidArr[], Player *player) {
-    memset(asteroidArr, 0, sizeof(Asteroid) * MAX_ASTEROIDS_NUM);
+    gameState.asteroidNum = 0;
     v2 spawnPos;
     for (int i = 0; i < INIT_ASTEROIDS_NUM; i++) {
         do {
@@ -98,6 +94,7 @@ void initAsteroids(Asteroid asteroidArr[], Player *player) {
         } while (fabs(player->pos.x - spawnPos.x) <= 150 && fabs(player->pos.y - spawnPos.y) <= 150);
 
         asteroidArr[i] = createAsteroid(player, 60, spawnPos);     
+        gameState.asteroidNum++;
     }
 }
 
@@ -132,14 +129,20 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
     };
 
     initPlayer(player);
+    memset(asteroidArr, 0, sizeof(Asteroid) * MAX_ASTEROIDS_NUM);
     initAsteroids(asteroidArr, player);
     initOther(bulletArr, particles);
 }
 
 // screen shake
-void shakeScreen(float dt, Asteroid asteroidArr[], Bullet bulletArr[], Particle particles[], Player player) {
-    // Prendre tous les players, bullet, asteriods, et particle et faire l'offset la
-    // Diminuer l'intensité rapidement mais graduellement
+v2 shakeScreen(float strength, float decreaseFactor) {
+    v2 transformationV;
+    float randomX = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+    float randomY = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+    transformationV.x = randomX * (strength * strength) - decreaseFactor;
+    transformationV.y = randomY * (strength * strength) - decreaseFactor;
+    strength = fmaxf(0.0f, strength - decreaseFactor);
+    return transformationV;
 }
 
 // particles functions
@@ -228,12 +231,13 @@ void updatePlayer(Player *player, float dt) {
 }
 
 void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int asteroidShot, Sound bangL, Sound bangS) {
-    if (gameState.asteroidNum == 0) {
+    if (gameState.asteroidNum <= 0) {
         initAsteroids(asteroidArr, player);
+        printf("No more asteroids, respawning...\n");
     }
     if (asteroidShot >= 0) {
         asteroidArr[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
-        if (asteroidArr[asteroidShot].size >= 10) {
+        if (asteroidArr[asteroidShot].size >= 20) {
             for (int i = 0; i < 2; i++) {
                 asteroidArr[gameState.asteroidNum + i] = createAsteroid(player, asteroidArr[asteroidShot].size / 2, asteroidArr[asteroidShot].pos);
             }
@@ -243,6 +247,7 @@ void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int astero
             asteroidArr[i] = asteroidArr[i + 1];
         }
         gameState.asteroidNum--; 
+        printf("asteroidnum = %d\n", gameState.asteroidNum);
     }
 
     for (int i = 0; i < gameState.asteroidNum; i++) {
@@ -313,7 +318,6 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *partic
                 bulletArr[i].isActive = 0;
                 gameState.bulletCount--;
                 particleExplosion(bulletArr[i].pos, 1, particles);
-                shakeScreen(dt);
                 return j; 
             }
         }
@@ -361,7 +365,7 @@ int main() {
 
     initGame(&player, asteroidArr, bulletArr, particles);
     
-    Font font = LoadFontEx("assets/AcPlus_IBM_EGA_8x14.ttf", 32, 0, 255); 
+    Font font = LoadFontEx("assets/PressStart2P-Regular.ttf", 32, 0, 255); 
 
     Sound fire = LoadSound("assets/fire.wav");
     Sound bangLarge = LoadSound("assets/bangLarge.wav");
@@ -377,11 +381,11 @@ int main() {
             DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
             EndDrawing();
             if (IsKeyPressed(KEY_SPACE)) { gameState.isPaused = 0; }
-        } 
-        if (gameState.isStartScreen) {
+        } else if (gameState.isStartScreen) {
             BeginDrawing();
             ClearBackground(BLACK);
-            DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
+            int xPos = (WIN_W / 2 - MeasureText("ASTEROIDS", 20) / 2);
+            DrawTextEx(font, "ASTEROIDS", (Vector2){xPos, 10}, 50, 1, WHITE);
             EndDrawing();
             if (IsKeyPressed(KEY_SPACE)) { gameState.isStartScreen = 0; }
         } else {
@@ -403,3 +407,5 @@ int main() {
     CloseWindow();
     return 0;
 }
+
+
