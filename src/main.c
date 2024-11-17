@@ -1,10 +1,10 @@
 #include <raylib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <math.h>
 #include <raymath.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 // Constants and Type Aliases
 typedef Vector2 v2;
@@ -233,7 +233,6 @@ void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int astero
     if (gameState.asteroidNum <= 0) {
         initAsteroids(asteroidArr, player);
         gameState.score += 3000;
-        printf("No more asteroids, respawning...\n");
     }
     if (asteroidShot >= 0) {
         asteroidArr[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
@@ -247,7 +246,6 @@ void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int astero
             asteroidArr[i] = asteroidArr[i + 1];
         }
         gameState.asteroidNum--; 
-        printf("asteroidnum = %d\n", gameState.asteroidNum);
     }
 
     for (int i = 0; i < gameState.asteroidNum; i++) {

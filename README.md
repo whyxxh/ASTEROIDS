@@ -12,7 +12,6 @@ if you are familiar with a terminal go ahead it is pretty obvious, else:
 - clone the repo
 - go to the ASTEROIDS directory in your terminal
 - either do `./run.sh` or `make` followed by `make run`.
-there will be debugging print messages i forgot to remove, will be fixed soon.
 
 
 # TO-DO:
