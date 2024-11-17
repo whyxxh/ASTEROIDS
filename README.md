@@ -5,7 +5,12 @@ this is a simple ASTEROIDS (1979) type game made with the C language and raylib 
 
 
 # How to play ?
-Just run `./run.sh`, or run `make; make run`
+if you are familiar with a terminal go ahead it is pretty obvious, else:
+- clone the repo
+- go to the ASTEROIDS directory in your terminal
+- either do `./run.sh` or `make` followed by `make run`.
+there will be debugging print messages i forgot to remove, will be fixed soon.
+
 
 # TO-DO:
 - add screen shake
