@@ -2,7 +2,7 @@
 this is a simple ASTEROIDS (1979) type game made with the C language and raylib (and it sucks)
 including:
 - particle visual effect
-- ... yeah not much special stuff other than it
+- ... yeah not much special stuff other than that
 
 ![image](https://github.com/user-attachments/assets/de9623a4-ee30-4963-b331-7cc22a0082b8)
 
