@@ -12,25 +12,22 @@ typedef Vector2 v2;
 const int WIN_W = 800;
 const int WIN_H = 600;
 const int SCALE = 7;
-
 const float ROT_SPEED = 4.0f;
 const float PLAYER_ACCEL = 100.0f;
-
 const int INIT_ASTEROIDS_NUM = 5;
 const int MAX_ASTEROIDS_NUM = 50;
-
 const int MAX_BULLETS = 100;
-
 const int MAX_PARTICLES = 300;
 const float MIN_PARTICLE_LIFETIME = 0.7f;
 const float MAX_PARTICLE_LIFETIME = 1.5f;
 const int MIN_PARTICLE_SIZE = 1;
 const int MAX_PARTICLE_SIZE = 2;
+const int MAX_SCORE = 1000000;
 
 // Ship Shape Definition
 const float SHIP[3][2][2] = {
-    {{0, -3.0f}, {-1.5f, 1.5f}},  
-    {{0, -3.0f}, {1.5f, 1.5f}},    
+    {{0, -3.0f}, {-1.5f, 1.5f}},
+    {{0, -3.0f}, {1.5f, 1.5f}},
     {{-1.5f, 1.5f}, {1.5f, 1.5f}}
 };
 
@@ -38,10 +35,11 @@ const float SHIP[3][2][2] = {
 typedef struct {
     int isPaused;
     int isStartScreen;
-    int isDebugging;
+    int isRapidFire;
     int bulletCount;
     int asteroidNum;
     int particleCount;
+    int score;
 } GameState;
 
 GameState gameState;
@@ -125,7 +123,8 @@ void initGame(Player *player, Asteroid asteroidArr[], Bullet bulletArr[], Partic
         .isStartScreen = 1,
         .asteroidNum = INIT_ASTEROIDS_NUM,
         .bulletCount = 0,
-        .particleCount = 0
+        .particleCount = 0,
+        .score = 0
     };
 
     initPlayer(player);
@@ -233,11 +232,12 @@ void updatePlayer(Player *player, float dt) {
 void updateAsteroids(Asteroid *asteroidArr, float dt, Player *player, int asteroidShot, Sound bangL, Sound bangS) {
     if (gameState.asteroidNum <= 0) {
         initAsteroids(asteroidArr, player);
+        gameState.score += 3000;
         printf("No more asteroids, respawning...\n");
     }
     if (asteroidShot >= 0) {
         asteroidArr[asteroidShot].size > 30 ? PlaySound(bangL) : PlaySound(bangS);
-        if (asteroidArr[asteroidShot].size >= 20) {
+        if (asteroidArr[asteroidShot].size >= 15) {
             for (int i = 0; i < 2; i++) {
                 asteroidArr[gameState.asteroidNum + i] = createAsteroid(player, asteroidArr[asteroidShot].size / 2, asteroidArr[asteroidShot].pos);
             }
@@ -274,7 +274,8 @@ void updateBullets(Bullet *bulletArr, float dt) {
 
 // Checks
 void checkBullets(Player *player, Bullet *bulletArr, Sound fire) {
-    if (IsKeyPressed(KEY_SPACE) && gameState.bulletCount < MAX_BULLETS) {
+    int keyPressed = gameState.isRapidFire ? IsKeyDown(KEY_SPACE) : IsKeyPressed(KEY_SPACE);
+    if (keyPressed && gameState.bulletCount < MAX_BULLETS) {
         PlaySound(fire);
         for (int i = 0; i < MAX_BULLETS; i++) {
             if (!bulletArr[i].isActive) {
@@ -318,6 +319,7 @@ int checkAsteroidShot(Bullet *bulletArr, Asteroid *asteroidArr, Particle *partic
                 bulletArr[i].isActive = 0;
                 gameState.bulletCount--;
                 particleExplosion(bulletArr[i].pos, 1, particles);
+                gameState.score += (asteroidArr[j].size > 30) ? 30 : 10;
                 return j; 
             }
         }
@@ -339,8 +341,12 @@ void update(Player *player, Asteroid *asteroidArr, Bullet *bulletArr, Particle *
 }
 
 void render(Player player, Asteroid *asteroidArr, Bullet *bulletArr, Particle particles[], float dt, Font font) {
+    char scoreText[MAX_SCORE];
+    snprintf(scoreText, sizeof(scoreText), "Score: %d", gameState.score);
     BeginDrawing();
     ClearBackground(BLACK);
+    DrawTextEx(font, scoreText, (Vector2){15, 15}, 20, 1, DARKGRAY);
+    DrawTextEx(font, scoreText, (Vector2){10, 10}, 20, 1, WHITE);
     drawShip(player);
     for (int i = 0; i < gameState.asteroidNum; i++) {
         drawAsteroid(asteroidArr[i]);
@@ -364,7 +370,7 @@ int main() {
     InitAudioDevice();
 
     initGame(&player, asteroidArr, bulletArr, particles);
-    
+
     Font font = LoadFontEx("assets/PressStart2P-Regular.ttf", 32, 0, 255); 
 
     Sound fire = LoadSound("assets/fire.wav");
@@ -378,16 +384,22 @@ int main() {
         if (gameState.isPaused) {
             BeginDrawing();
             ClearBackground(BLACK);
+            DrawTextEx(font, "paused", (Vector2){15, 15}, 50, 1, DARKGRAY);
             DrawTextEx(font, "paused", (Vector2){10, 10}, 50, 1, WHITE);
             EndDrawing();
-            if (IsKeyPressed(KEY_SPACE)) { gameState.isPaused = 0; }
+            if (IsKeyPressed(KEY_P)) { gameState.isPaused = 0; }
         } else if (gameState.isStartScreen) {
             BeginDrawing();
             ClearBackground(BLACK);
-            int xPos = (WIN_W / 2 - MeasureText("ASTEROIDS", 20) / 2);
-            DrawTextEx(font, "ASTEROIDS", (Vector2){xPos, 10}, 50, 1, WHITE);
+            DrawTextEx(font, "ASTEROIDS", (Vector2){15, 15}, 50, 1, DARKGRAY);
+            DrawTextEx(font, "ASTEROIDS", (Vector2){10, 10}, 50, 1, WHITE);
+            DrawTextEx(font, "1. PLAY NORMAL", (Vector2){15, 155}, 25, 1, DARKGRAY);
+            DrawTextEx(font, "1. PLAY NORMAL", (Vector2){10, 150}, 25, 1, WHITE);
+            DrawTextEx(font, "2. SUPER BULLETS FIRE MODE", (Vector2){15, 255}, 25, 1, (Color){135, 0, 0});
+            DrawTextEx(font, "2. SUPER BULLETS FIRE MODE", (Vector2){10, 250}, 25, 1, RED);
             EndDrawing();
-            if (IsKeyPressed(KEY_SPACE)) { gameState.isStartScreen = 0; }
+            if (IsKeyPressed(KEY_ONE)) { gameState.isStartScreen = 0; gameState.isRapidFire = 0; }
+            if (IsKeyPressed(KEY_TWO)) { gameState.isStartScreen = 0; gameState.isRapidFire = 1; }
         } else {
             float dt = GetFrameTime();
             update(&player, asteroidArr, bulletArr, particles, dt, fire, bangLarge, bangSmall);
