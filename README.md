@@ -10,8 +10,18 @@ including:
 # How to play ?
 if you are familiar with a terminal go ahead it is pretty obvious, else:
 - clone the repo
+```bash
+git clone https://whyxxh/ASTEROIDS.git
+```
 - go to the ASTEROIDS directory in your terminal
+```bash
+cd ASTEROIDS
+```
 - either do `./run.sh` or `make` followed by `make run`.
+```bash
+make
+make run
+```
 
 
 # TO-DO:
