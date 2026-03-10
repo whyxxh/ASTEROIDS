@@ -11,7 +11,7 @@ including:
 if you are familiar with a terminal go ahead it is pretty obvious, else:
 - clone the repo
 ```bash
-git clone https://whyxxh/ASTEROIDS.git
+git clone https://github.com/whyxxh/ASTEROIDS.git
 ```
 - go to the ASTEROIDS directory in your terminal
 ```bash
